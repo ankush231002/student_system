@@ -30,6 +30,8 @@ public class User {
     private String nationality;
     private String phoneNo;
     private String aadharNo;
-
     private String imagePath;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Bank bankDetails;
 }

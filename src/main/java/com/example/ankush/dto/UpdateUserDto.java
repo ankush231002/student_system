@@ -26,4 +26,6 @@ public class UpdateUserDto {
     private MultipartFile image;
     private String returnImagePath;
 
+    private BankDto bankDetails;
+
 }

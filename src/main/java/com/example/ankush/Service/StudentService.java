@@ -2,11 +2,13 @@ package com.example.ankush.Service;
 
 import com.example.ankush.dto.GetDto;
 import com.example.ankush.dto.UpdateUserDto;
+import com.example.ankush.entity.Bank;
 import com.example.ankush.entity.User;
 import com.example.ankush.repository.StudentRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +22,36 @@ public class StudentService {
 
     @Autowired
     private StudentRepository studentRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+
+
+
+
+
+
+
+
+    //     ...........method for converting the json to dto
+
+    public UpdateUserDto convertJsonToDto(String json) throws IOException {
+        return objectMapper.readValue(json, UpdateUserDto.class);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -119,6 +151,22 @@ public class StudentService {
         user.setAadharNo(dto.getAadharNo());
 
 
+
+        // ,,,,,,,,,,,,,, hanldle bank,,,saving bank info
+        if(dto.getBankDetails() != null){
+            Bank bank = new Bank();
+
+            bank.setBankName(dto.getBankDetails().getBankName());
+            bank.setBranchName(dto.getBankDetails().getBranchName());
+            bank.setAccountNo(dto.getBankDetails().getAccountNo());
+            bank.setIfscCode(dto.getBankDetails().getIfscCode());
+
+            bank.setUser(user);
+
+            user.setBankDetails(bank);
+        }
+
+
         studentRepository.save(user);
         return dto;
     }
@@ -151,6 +199,14 @@ public class StudentService {
 
 
 
+
+
+
+
+
+
+
+
     //updating student using student id.,..... and deleting the old image as well
     public UpdateUserDto updateStudent(String studentId, UpdateUserDto dto) throws IOException {
         User tempUser = studentRepository.findByStudentId(studentId)
@@ -176,20 +232,7 @@ public class StudentService {
             String uploadFolder = projectRoot + File.separator + "uploads" + File.separator;
 
 
-//            if (tempUser.getImagePath() != null) {
-//                String fileName = tempUser.getImagePath().substring(tempUser.getImagePath().lastIndexOf("/") + 1);
-//                Path path = Paths.get(projectRoot, "uploads", fileName);
-//                try {
-////                    Files.deleteIfExists(path);
-//                    System.out.println("FULL DELETE PATH: " + path.toAbsolutePath());
-//
-//                    System.gc(); // Release file locks
-//                    boolean deleted = Files.deleteIfExists(path);
-//                    System.out.println("WAS FILE DELETED? " + deleted);
-//                } catch (IOException e) {
-//                    System.out.println("Warning: Old file not found on disk.");
-//                }
-//            }
+
 
             if (tempUser.getImagePath() != null) {
 
@@ -216,9 +259,60 @@ public class StudentService {
             tempUser.setImagePath("/uploads/" + fileName);
         }
         else{
+
+
+            if (tempUser.getImagePath() != null) {
+                String projectRoot = System.getProperty("user.dir");
+                // Extract filename from path (e.g., "/uploads/Stu0001.jpg" -> "Stu0001.jpg")
+                String fileName = tempUser.getImagePath().replace("/uploads/", "").replace("uploads/", "");
+                Path path = Paths.get(projectRoot + File.separator + "uploads" + File.separator + fileName);
+
+                try {
+                    Files.deleteIfExists(path);
+                } catch (Exception e) {
+                    System.out.println("Could not delete file: " + e.getMessage());
+                }
+            }
+
             tempUser.setImagePath(null);
             dto.setReturnImagePath(null);
         }
+
+
+
+        // ..................................updating bank details
+
+        //................if user update the bank details........ new datails
+        if(dto.getBankDetails() != null){
+            Bank bank = tempUser.getBankDetails();
+
+            // ...........if old bank details are null
+            if(bank == null){
+                bank = new Bank();
+                bank.setUser(tempUser);
+                tempUser.setBankDetails(bank);
+            }
+
+            bank.setBankName(dto.getBankDetails().getBankName());
+            bank.setBranchName(dto.getBankDetails().getBranchName());
+            bank.setAccountNo(dto.getBankDetails().getAccountNo());
+            bank.setIfscCode(dto.getBankDetails().getIfscCode());
+        }
+        // ............... if new datils are null
+        else if(tempUser.getBankDetails() != null){
+            tempUser.setBankDetails(null);
+        }
+
+
+
+
+
+
+
+
+
+
+
 
         // 4. Save to Database
         User savedUser = studentRepository.save(tempUser);
