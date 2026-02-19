@@ -2,12 +2,10 @@ package com.example.ankush.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Setter
-@Getter
+
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class BankDto {
@@ -15,4 +13,6 @@ public class BankDto {
     private String branchName;
     private String accountNo;
     private String ifscCode;
+
+    
 }

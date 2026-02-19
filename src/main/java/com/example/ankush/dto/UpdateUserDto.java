@@ -1,21 +1,19 @@
 package com.example.ankush.dto;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import org.springframework.web.multipart.MultipartFile;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
-import java.util.List;
 
-import lombok.Setter;
-
-@Setter
-@Getter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateUserDto {
@@ -37,6 +35,8 @@ public class UpdateUserDto {
     private List<MultipartFile> documents;
     private List<String> returnDocumentsPaths;
 
-    private BankDto bankDetails;
+    private List<BankDto> bankDetails;
 
+    @JsonIgnore
+    private List<String> deleteDocumentPaths;
 }

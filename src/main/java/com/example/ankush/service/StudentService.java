@@ -1,24 +1,28 @@
 package com.example.ankush.service;
 
-import com.example.ankush.dto.GetDto;
-import com.example.ankush.dto.UpdateUserDto;
-import com.example.ankush.entity.Bank;
-import com.example.ankush.entity.StudentDocuments;
-import com.example.ankush.entity.User;
-import com.example.ankush.repository.StudentRepository;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-import tools.jackson.databind.ObjectMapper;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.example.ankush.dto.BankDto;
+import com.example.ankush.dto.GetDto;
+import com.example.ankush.dto.UpdateUserDto;
+import com.example.ankush.entity.Bank;
+import com.example.ankush.entity.StudentDocuments;
+import com.example.ankush.entity.User;
+import com.example.ankush.repository.StudentRepository;
+
+import jakarta.transaction.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class StudentService {
@@ -28,71 +32,22 @@ public class StudentService {
     @Autowired
     private ObjectMapper objectMapper;
 
-
-
-
+    //......convert json to dto method
     public UpdateUserDto convertJsonToDto(String json) throws IOException {
         return objectMapper.readValue(json, UpdateUserDto.class);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //auto generated student id,,,,,,,,stu0001
+    //.......generate the student id(constum made)
     private String generateId(){
         String lastId = studentRepository.findMaxStudentId();
-
         if(lastId == null){
             return "Stu0001";
         }
-
         int nextNum = Integer.parseInt(lastId.substring(3)) +1;
         return String.format("Stu%04d",nextNum);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // return the student info,,,,,, studentId, student name, student class
+    //......get call... return all user getdto
     public List<GetDto> allUser() {
         return studentRepository.findAll().stream()
                 .map(u -> new GetDto(
@@ -103,61 +58,27 @@ public class StudentService {
                 .toList();
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // save new user,,,,,,
+    //.......saving new user
     public UpdateUserDto saveUser(UpdateUserDto dto) throws IOException {
         User user = new User();
         String stuId = generateId();
         String projectRoot = System.getProperty("user.dir");
 
-        //...............image saving>>>>> only if the image is there
         if(dto.getImage() != null && !dto.getImage().isEmpty()){
             String uploadFolder = projectRoot + File.separator + "uploads" + File.separator;
             String originalName = dto.getImage().getOriginalFilename();
             String extension = originalName.substring(originalName.lastIndexOf("."));
-
-            //.............now we have the file name
             String fileName = stuId + extension;
-            //............now the path
             Path path = Paths.get(uploadFolder + fileName);
-            //...........auto making the directry is not there
             Files.createDirectories(path.getParent());
-            // ......... write the image at the path
             Files.write(path, dto.getImage().getBytes());
-            //.........virtual path for the database to store
             String virturalPath = "/uploads/" + fileName;
-            //uploading the virtual path to the database and returnimage path
             user.setImagePath(virturalPath);
             dto.setReturnImagePath(virturalPath);
-
         }
 
-
-
-        // ...........handling multiple documents logic here
         if(dto.getDocuments()!=null && !dto.getDocuments().isEmpty()){
-        
-            //............folder structure for the document.......uploads/documents/Stu0001
             String docFolder = projectRoot + File.separator + "uploads" + File.separator + "documents" + File.separator + stuId + File.separator;
-
             List<String> docPaths = new ArrayList<>();
             int count = 1;
 
@@ -165,22 +86,14 @@ public class StudentService {
                 if(!file.isEmpty()){
                     String originalName = file.getOriginalFilename();
                     String extension = originalName.substring(originalName.lastIndexOf("."));
-
                     String fileName = stuId + "_" + count + extension;
-
                     Path path = Paths.get(docFolder + fileName);
-
                     Files.createDirectories(path.getParent());
-
                     Files.write(path, file.getBytes());
-
                     String virtualDocPath = "/uploads/documents/" + stuId + "/" + fileName;
-
                     StudentDocuments docEntity = new StudentDocuments();
-
                     docEntity.setDocumentPath(virtualDocPath);
                     docEntity.setUser(user);
-
                     user.getDocuments().add(docEntity);
                     docPaths.add(virtualDocPath);
                     count++;
@@ -188,18 +101,6 @@ public class StudentService {
             }
             dto.setReturnDocumentsPaths(docPaths);
         }
-
-
-
-
-
-
-
-
-
-
-
-
 
         user.setStudentId(stuId);
         user.setStudentName(dto.getStudentName());
@@ -212,42 +113,23 @@ public class StudentService {
         user.setAddress(dto.getAddress());
         user.setAadharNo(dto.getAadharNo());
 
-
-
-        // ,,,,,,,,,,,,,, hanldle bank,,,saving bank info
-        if(dto.getBankDetails() != null){
-            Bank bank = new Bank();
-
-            bank.setBankName(dto.getBankDetails().getBankName());
-            bank.setBranchName(dto.getBankDetails().getBranchName());
-            bank.setAccountNo(dto.getBankDetails().getAccountNo());
-            bank.setIfscCode(dto.getBankDetails().getIfscCode());
-
-            bank.setUser(user);
-
-            user.setBankDetails(bank);
+        if(dto.getBankDetails()!=null && !dto.getBankDetails().isEmpty()){
+            for(BankDto bankDto : dto.getBankDetails()){
+                Bank bank = new Bank();
+                bank.setBankName(bankDto.getBankName());
+                bank.setBranchName(bankDto.getBranchName());
+                bank.setAccountNo(bankDto.getAccountNo());
+                bank.setIfscCode(bankDto.getIfscCode());
+                bank.setUser(user);
+                user.getBankDetails().add(bank);
+            }
         }
-
 
         studentRepository.save(user);
         return dto;
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // find student by student id
+    //.......get student by id
     public GetDto findStudent(String studentId) throws Throwable {
         User user = studentRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new RuntimeException("Not found"));
@@ -256,24 +138,11 @@ public class StudentService {
 
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    //........update student info
     public UpdateUserDto updateStudent(String studentId, UpdateUserDto dto) throws IOException {
         User tempUser = studentRepository.findByStudentId(studentId)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        // 1. Update Basic Fields
         tempUser.setStudentName(dto.getStudentName());
         tempUser.setAddress(dto.getAddress());
         tempUser.setDob(dto.getDob());
@@ -286,85 +155,166 @@ public class StudentService {
 
         String projectRoot = System.getProperty("user.dir");
 
-        // 2. Handle Profile Image
-        if (dto.getImage() != null && !dto.getImage().isEmpty()) {
-            // Delete old image
-            if (tempUser.getImagePath() != null) {
-                String oldFileName = tempUser.getImagePath().replace("/uploads/", "");
-                Files.deleteIfExists(Paths.get(projectRoot + File.separator + "uploads" + File.separator + oldFileName));
+       // ........image logic
+       if(dto.getImage() == null){
+            
+       }
+       else{
+            if(dto.getImage().isEmpty()){
+                if(tempUser.getImagePath()!=null){
+                    String oldFileName = tempUser.getImagePath().replace("/uploads/", "");
+                    Files.deleteIfExists(Paths.get(projectRoot + File.separator + "uploads" + File.separator + oldFileName));
+                    tempUser.setImagePath(null);
+                }                
             }
-            // Save new image
-            String extension = dto.getImage().getOriginalFilename().substring(dto.getImage().getOriginalFilename().lastIndexOf("."));
-            String newFileName = studentId + extension;
-            Path path = Paths.get(projectRoot + File.separator + "uploads" + File.separator + newFileName);
-            Files.createDirectories(path.getParent());
-            Files.write(path, dto.getImage().getBytes());
-            tempUser.setImagePath("/uploads/" + newFileName);
-        } else {
-            // IF NO NEW IMAGE: Delete existing photo and clear DB path
-            if (tempUser.getImagePath() != null) {
-                String oldFileName = tempUser.getImagePath().replace("/uploads/", "");
-                Files.deleteIfExists(Paths.get(projectRoot + File.separator + "uploads" + File.separator + oldFileName));
-                tempUser.setImagePath(null);
+            else{
+                if(tempUser.getImagePath()!=null){
+                    String oldFileName = tempUser.getImagePath().replace("/uploads/", "");
+                    Files.deleteIfExists(Paths.get(projectRoot + File.separator + "uploads" + File.separator + oldFileName));
+                }
+                String extension = dto.getImage().getOriginalFilename().substring(dto.getImage().getOriginalFilename().lastIndexOf("."));
+                String newFileName = studentId + extension;
+                Path path = Paths.get(projectRoot + File.separator + "uploads" + File.separator + newFileName);
+                Files.createDirectories(path.getParent());
+                Files.write(path, dto.getImage().getBytes());
+                tempUser.setImagePath("/uploads/" + newFileName);
             }
-        }
+       }
 
-        // 3. Handle Documents
+        //........document logic
+
         String docFolderPath = projectRoot + File.separator + "uploads" + File.separator + "documents" + File.separator + studentId;
         File docFolder = new File(docFolderPath);
 
-        if (dto.getDocuments() != null && !dto.getDocuments().isEmpty()) {
-            // Physically delete old folder
-            if (docFolder.exists()) {
-                deleteDirectory(docFolder);
-            }
-            // Clear DB records for orphan removal
-            tempUser.getDocuments().clear();
+        // ...if delete links are there
+        if(dto.getDeleteDocumentPaths()!=null && !dto.getDeleteDocumentPaths().isEmpty()){
 
-            List<String> newPaths = new ArrayList<>();
-            int count = 1;
-            for (MultipartFile file : dto.getDocuments()) {
-                if (!file.isEmpty()) {
-                    String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
-                    String fileName = studentId + "_" + count + extension;
-                    Path path = Paths.get(docFolderPath + File.separator + fileName);
-
-                    Files.createDirectories(path.getParent());
-                    Files.write(path, file.getBytes());
-                    String virtualPath = "/uploads/documents/" + studentId + "/" + fileName;
-                    StudentDocuments docEntity = new StudentDocuments();
-                    docEntity.setDocumentPath(virtualPath);
-                    docEntity.setUser(tempUser);
-
-                    tempUser.getDocuments().add(docEntity);
-                    newPaths.add(virtualPath);
-                    count++;
+            //....check whether no of links and no of new document are equal 
+            int noOfFiles = 0;
+            if(dto.getDocuments() != null){
+                for(MultipartFile file : dto.getDocuments()){
+                    if(!file.isEmpty()){
+                        noOfFiles++;
+                    }
                 }
             }
-            dto.setReturnDocumentsPaths(newPaths);
-        } else {
-            // IF NO NEW DOCUMENTS: Delete the folder and clear DB list
-            if (docFolder.exists()) {
-                deleteDirectory(docFolder);
+            if(dto.getDeleteDocumentPaths().size() != noOfFiles){
+                throw new RuntimeException("   :(       Count Mismatch       :(      no of delete links not equals to new documents uploaded");
             }
-            tempUser.getDocuments().clear();
-            dto.setReturnDocumentsPaths(null);
+
+            //....check whether links are present in the databases;
+            for( String path : dto.getDeleteDocumentPaths()){
+                Boolean found = false;
+                for(StudentDocuments doc : tempUser.getDocuments()){
+                    if(doc.getDocumentPath().equals(path)){
+                        found = true;
+                         break;
+                    }
+                }
+                if(!found){
+                    throw new RuntimeException("   :(       Count Mismatch       :(      delete link not found :" + path);
+                }
+            }
+
+            //.......duplicate paths
+            HashSet<String> seen = new HashSet<>();
+            for(String path : dto.getDeleteDocumentPaths()){
+                if(!seen.add(path)){
+                    throw new RuntimeException("   :(  duplicate paths : " + path);
+                }
+            }
+
+            //.....replace the document one by one
+            for( int i = 0; i<dto.getDeleteDocumentPaths().size(); i++){
+                String virtualPath = dto.getDeleteDocumentPaths().get(i);
+                String physicalPath = virtualPath.replace("/uploads/documents/" + studentId + "/", docFolderPath + File.separator);
+                MultipartFile newFile = dto.getDocuments().get(i);
+                Files.write(Paths.get(physicalPath), newFile.getBytes());
+
+            }
+            
+            //return all the existing paths from the db
+            List<String> existingPaths = new ArrayList<>();
+            for(StudentDocuments doc : tempUser.getDocuments()){
+                existingPaths.add(doc.getDocumentPath());
+            }
+            dto.setReturnDocumentsPaths(existingPaths);
+
+        }
+        else{
+             if(dto.getDocuments() == null){
+            // Case 1: do nothing, but still return existing paths
+            List<String> existingPaths = new ArrayList<>();
+            for(StudentDocuments doc : tempUser.getDocuments()){
+                existingPaths.add(doc.getDocumentPath());
+            }
+            dto.setReturnDocumentsPaths(existingPaths);}
+        else{
+            //.....method to find documents is empty or not
+            Boolean hasRealFiles = false;
+            for( MultipartFile file : dto.getDocuments()){
+                if(!file.isEmpty()){
+                    hasRealFiles = true;
+                    break;
+                }
+            }
+            //..... student ticked the box but no document in it;
+            if(!hasRealFiles){
+                if(docFolder.exists()){
+                    deleteDirectory(docFolder);
+                }
+                tempUser.getDocuments().clear();
+                dto.setReturnDocumentsPaths(null);
+            }
+            else{
+                //.......student uploaded a real file;
+                if(docFolder.exists()){
+                    deleteDirectory(docFolder);
+                }
+                tempUser.getDocuments().clear();
+
+                List<String> newPaths = new ArrayList<>();
+                int count = 1;
+                for(MultipartFile file : dto.getDocuments()){
+                    if(!file.isEmpty()){
+                        String extension = file.getOriginalFilename().substring(file.getOriginalFilename().lastIndexOf("."));
+                        String fileName = studentId + "_" + count + extension;
+                        Path path = Paths.get(docFolderPath + File.separator + fileName);
+                        Files.createDirectories(path.getParent());
+                        Files.write(path, file.getBytes());
+                        String virtualPath = "/uploads/documents/" + studentId + "/" + fileName;
+                        StudentDocuments docEntity = new StudentDocuments();
+                        docEntity.setDocumentPath(virtualPath);
+                        docEntity.setUser(tempUser);
+                        tempUser.getDocuments().add(docEntity);
+                        newPaths.add(virtualPath);
+                        count++;
+                    }
+                }
+                dto.setReturnDocumentsPaths(newPaths);
+            }
         }
 
-        // 4. Update Bank Details
-        if (dto.getBankDetails() != null) {
-            Bank bank = tempUser.getBankDetails();
-            if (bank == null) {
-                bank = new Bank();
-                bank.setUser(tempUser);
-                tempUser.setBankDetails(bank);
+        }
+
+        //........handling bank
+        if(dto.getBankDetails() == null){}
+        else{
+            if(dto.getBankDetails().isEmpty()){
+                tempUser.getBankDetails().clear();
             }
-            bank.setBankName(dto.getBankDetails().getBankName());
-            bank.setBranchName(dto.getBankDetails().getBranchName());
-            bank.setAccountNo(dto.getBankDetails().getAccountNo());
-            bank.setIfscCode(dto.getBankDetails().getIfscCode());
-        } else {
-            tempUser.setBankDetails(null);
+            else{
+                tempUser.getBankDetails().clear();
+                for(BankDto bankDto : dto.getBankDetails()){
+                Bank bank = new Bank();
+                bank.setBankName(bankDto.getBankName());
+                bank.setBranchName(bankDto.getBranchName());
+                bank.setAccountNo(bankDto.getAccountNo());
+                bank.setIfscCode(bankDto.getIfscCode());
+                bank.setUser(tempUser);
+                tempUser.getBankDetails().add(bank);
+            }
+            }
         }
 
         User savedUser = studentRepository.save(tempUser);
@@ -373,15 +323,7 @@ public class StudentService {
     }
 
 
-
-
-
-
-
-
-
-
-
+    //........delete user by student id
     @Transactional
     public void removeUser(String studentId) {
         User user = studentRepository.findByStudentId(studentId)
@@ -389,14 +331,12 @@ public class StudentService {
 
         String projectRoot = System.getProperty("user.dir");
 
-        // 1. Delete Profile Image
         if (user.getImagePath() != null) {
             String fileName = user.getImagePath().replace("/uploads/", "");
             Path path = Paths.get(projectRoot + File.separator + "uploads" + File.separator + fileName);
             try { Files.deleteIfExists(path); } catch (Exception e) { /* Log error */ }
         }
 
-        // 2. Delete the entire Document Folder
         File docFolder = new File(projectRoot + File.separator + "uploads" + File.separator + "documents" + File.separator + studentId);
         if (docFolder.exists()) {
             try {
@@ -405,43 +345,10 @@ public class StudentService {
                 System.out.println("Could not delete doc folder: " + e.getMessage());
             }
         }
-
         studentRepository.deleteByStudentId(studentId);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    //...... delete directory from the folder
     private void deleteDirectory(File directory) throws IOException {
         File[] files = directory.listFiles();
         if (files != null) {
